@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Histórico de Señales MACD PRO</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif;
+            margin: 2em;
+            background-color: #f5f5f5;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2em;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .btn-home {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-home:hover {
+            background-color: #45a049;
+        }
+        .btn-export {
+            background-color: #2196F3;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .btn-export:hover {
+            background-color: #0b7dda;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f0f0f0;
+        }
+        .signal-buy {
+            background-color: #d4edda;
+            color: #155724;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+        .signal-sell {
+            background-color: #f8d7da;
+            color: #721c24;
+            font-weight: bold;
+            padding: 4px 8px;
+            border-radius: 3px;
+        }
+        .momento-alcista {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .momento-bajista {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .tendencia-bull {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .tendencia-bear {
+            color: #ff6600;
+            font-weight: bold;
+        }
+        .no-signals {
+            background-color: white;
+            padding: 2em;
+            text-align: center;
+            color: #999;
+            border-radius: 4px;
+        }
+        .stats {
+            background-color: white;
+            padding: 1.5em;
+            margin-bottom: 2em;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stats-item {
+            display: inline-block;
+            margin-right: 2em;
+        }
+        .stats-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .stats-value {
+            font-size: 1.3em;
+            color: #333;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>📊 Histórico de Señales MACD PRO</h1>
+        </div>
+        <div>
+            <a href="/" class="btn-home">← Volver a Tickers</a>
+        </div>
+    </div>
+
+    {% if signals %}
+    <div class="stats">
+        <div class="stats-item">
+            <div class="stats-label">Total de señales</div>
+            <div class="stats-value">{{ signals|length }}</div>
+        </div>
+        <div class="stats-item">
+            <div class="stats-label">Últimas 24h</div>
+            <div class="stats-value">-</div>
+        </div>
+    </div>
+
+    <table>
+        <tr>
+            <th>Timestamp</th>
+            <th>Símbolo</th>
+            <th>Tipo de Señal</th>
+            <th>Precio</th>
+            <th>Momento</th>
+            <th>Tendencia</th>
+        </tr>
+        {% for signal in signals %}
+        <tr>
+            <td>{{ signal.timestamp }}</td>
+            <td><strong>{{ signal.symbol }}</strong></td>
+            <td>
+                {% if signal.signal_type == 'BUY' %}
+                    <span class="signal-buy">🟢 BUY</span>
+                {% else %}
+                    <span class="signal-sell">🔴 SELL</span>
+                {% endif %}
+            </td>
+            <td>{{ "%.8f"|format(signal.price|float) }}</td>
+            <td>
+                {% if '↑' in signal.momento %}
+                    <span class="momento-alcista">{{ signal.momento }}</span>
+                {% else %}
+                    <span class="momento-bajista">{{ signal.momento }}</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if 'BULL' in signal.tendencia %}
+                    <span class="tendencia-bull">{{ signal.tendencia }}</span>
+                {% else %}
+                    <span class="tendencia-bear">{{ signal.tendencia }}</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    {% else %}
+    <div class="no-signals">
+        <p>No hay señales registradas aún.</p>
+        <p>Las señales aparecerán aquí cuando se detecten nuevas operaciones.</p>
+    </div>
+    {% endif %}
+
+</body>
+</html>

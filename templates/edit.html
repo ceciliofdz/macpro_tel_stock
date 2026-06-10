@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Editar ticker</title></head>
+<body>
+    <h1>Editar ticker</h1>
+    <form method="post">
+        <div><label>Símbolo:</label><input name="symbol" value="{{ ticker.symbol }}" required></div>
+        <div><label>Activo:</label>
+            <select name="active">
+                <option value="True" {% if ticker.active == 'True' %}selected{% endif %}>Sí</option>
+                <option value="False" {% if ticker.active == 'False' %}selected{% endif %}>No</option>
+            </select>
+        </div>
+        <div><label>Timeframe:</label><input name="timeframe" value="{{ ticker.timeframe }}" required></div>
+        <button type="submit">Guardar cambios</button>
+    </form>
+    <a href="/">Volver</a>
+</body>
+</html>
