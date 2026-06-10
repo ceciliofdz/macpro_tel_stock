@@ -3,6 +3,7 @@ import pandas as pd
 import time
 from datetime import datetime, timezone
 import yfinance as yf
+from json import JSONDecodeError
 
 # Mantener exchange para cryptos (compatibilidad)
 exchange = ccxt.binance({
@@ -129,11 +130,18 @@ def fetch_ohlcv(symbol: str, timeframe: str, limit: int = 300) -> pd.DataFrame:
     # Para intradiario pedimos 120d, para diario pedimos 365d
     period = '365d' if interval == '1d' else '120d'
 
-    try:
-        tk = yf.Ticker(symbol)
-        hist = tk.history(period=period, interval=interval, auto_adjust=False, actions=False)
-    except Exception as e:
-        raise Exception(f"Error obteniendo datos de yfinance para {symbol}: {e}")
+    tk = yf.Ticker(symbol)
+    hist = None
+    for attempt in range(3):
+        try:
+            hist = tk.history(period=period, interval=interval, auto_adjust=False, actions=False)
+            break
+        except (JSONDecodeError, ValueError, ConnectionError) as e:
+            print(f"[yfinance retry {attempt+1}/3] Error obteniendo {symbol}: {e}. Esperando {2**attempt}s...")
+            time.sleep(2**attempt)
+        except Exception as e:
+            print(f"Error inesperado obteniendo datos de yfinance para {symbol}: {e}")
+            break
 
     # Fallbacks: para intradiario yfinance a veces devuelve vacío; probar 60m o 1d
     if hist is None or hist.empty:

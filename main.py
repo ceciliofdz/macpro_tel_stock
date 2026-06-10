@@ -21,7 +21,7 @@ from data_fetcher import fetch_ohlcv, get_exchange_time
 
 # En lugar de datetime.now(), usaremos datetime.utcnow() en los logs
 def log_message(msg):
-    print(f"[{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC] {msg}")
+    print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC] {msg}")
 
 # Función auxiliar para obtener tiempo UTC actual en ms (respaldo)
 def get_current_utc_ms():
@@ -85,7 +85,7 @@ def init_signals_file():
 
 def save_signal(symbol, signal_type, price, momento, tendencia):
     """Guarda una señal en el histórico CSV."""
-    timestamp = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
     with open(SIGNALS_FILE, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([timestamp, symbol, signal_type, price, momento, tendencia])
