@@ -19,7 +19,7 @@ __pycache__/
 # Archivos de base de datos / datos generados
 *.db
 *.sqlite
-tickers.csv          # Contiene tus tickers personales (opcional, puedes excluirlo)
+# tickers.csv          # Contiene tus tickers personales (opcional, puedes excluirlo)
 signals_history.csv  # Histórico de señales generado en tiempo de ejecución
 *.log
 
