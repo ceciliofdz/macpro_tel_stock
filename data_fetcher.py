@@ -35,16 +35,48 @@ def get_exchange_time():
 
 
 def _timeframe_to_yf_interval(timeframe: str) -> str:
-    """Convierte timeframe tipo '1m','15m','1h','4h','1d' a interval aceptado por yfinance."""
-    unit = timeframe[-1]
-    value = int(timeframe[:-1])
-    if unit == 'm':
-        return f"{value}m"
-    if unit == 'h':
-        minutes = value * 60
-        return f"{minutes}m"
-    if unit == 'd':
-        return '1d'
+    """Convierte timeframes a intervalos válidos para yfinance."""
+    tf = timeframe.strip().lower()
+    mapping = {
+        '1m': '1m',
+        '2m': '2m',
+        '5m': '5m',
+        '15m': '15m',
+        '30m': '30m',
+        '60m': '1h',
+        '1h': '1h',
+        '90m': '90m',
+        '2h': '1h',
+        '4h': '4h',
+        '1d': '1d',
+        '5d': '5d',
+        '1w': '1wk',
+        '1wk': '1wk',
+        '1mo': '1mo',
+        '3mo': '3mo',
+    }
+    if tf in mapping:
+        return mapping[tf]
+    if tf.endswith('h'):
+        try:
+            value = int(tf[:-1])
+            if value == 2:
+                return '1h'
+            if value == 4:
+                return '4h'
+        except ValueError:
+            pass
+    if tf.endswith('m'):
+        try:
+            value = int(tf[:-1])
+            if value in (1, 2, 5, 15, 30):
+                return f"{value}m"
+            if value == 60:
+                return '1h'
+            if value == 90:
+                return '90m'
+        except ValueError:
+            pass
     raise ValueError(f"Timeframe no soportado: {timeframe}")
 
 

@@ -2,6 +2,7 @@ symbol,active,timeframe
 BTC/USDT,True,4h
 ETH/USDT,True,4h
 SOL/USDT,False,1h
-AXTIUSDT,True,1h
-MU,True,1h
-NFLX,True,1h
+AXTIUSDT,False,1h
+MU,True,4h
+NFLX,True,4h
+PLTR,True,4h

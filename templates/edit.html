@@ -11,7 +11,19 @@
                 <option value="False" {% if ticker.active == 'False' %}selected{% endif %}>No</option>
             </select>
         </div>
-        <div><label>Timeframe:</label><input name="timeframe" value="{{ ticker.timeframe }}" required></div>
+        <div><label>Timeframe:</label>
+            <select name="timeframe">
+                <option value="1m" {% if ticker.timeframe == '1m' %}selected{% endif %}>1m</option>
+                <option value="5m" {% if ticker.timeframe == '5m' %}selected{% endif %}>5m</option>
+                <option value="15m" {% if ticker.timeframe == '15m' %}selected{% endif %}>15m</option>
+                <option value="30m" {% if ticker.timeframe == '30m' %}selected{% endif %}>30m</option>
+                <option value="1h" {% if ticker.timeframe == '1h' %}selected{% endif %}>1h</option>
+                <option value="2h" {% if ticker.timeframe == '2h' %}selected{% endif %}>2h</option>
+                <option value="4h" {% if ticker.timeframe == '4h' %}selected{% endif %}>4h</option>
+                <option value="1d" {% if ticker.timeframe == '1d' %}selected{% endif %}>1d</option>
+                <option value="1w" {% if ticker.timeframe == '1w' %}selected{% endif %}>1w</option>
+            </select>
+        </div>
         <button type="submit">Guardar cambios</button>
     </form>
     <a href="/">Volver</a>
