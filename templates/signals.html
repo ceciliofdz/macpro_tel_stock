@@ -1,275 +1,28 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Histórico de Señales MACD PRO</title>
-    <style>
-        :root {
-            --bg: #0b1220;
-            --surface: #121a2b;
-            --surface-2: #182235;
-            --text: #e5e7eb;
-            --muted: #94a3b8;
-            --primary: #22c55e;
-            --danger: #ef4444;
-            --border: rgba(255, 255, 255, 0.08);
-            --shadow: 0 24px 60px rgba(0, 0, 0, 0.18);
-            --radius: 12px;
-            --space-xs: 4px;
-            --space-sm: 8px;
-            --space-md: 16px;
-            --space-lg: 24px;
-            --space-xl: 32px;
-            --font-base: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            --font-heading: 'IBM Plex Sans', sans-serif;
-        }
+{% extends 'base.html' %}
 
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
+{% block title %}Histórico de Señales MACD PRO{% endblock %}
 
-        body {
-            margin: 0;
-            min-height: 100vh;
-            font-family: var(--font-base);
-            background: radial-gradient(circle at top left, rgba(34, 197, 94, 0.14), transparent 25%),
-                        linear-gradient(180deg, #0b1220 0%, #05090f 100%);
-            color: var(--text);
-        }
+{% block header %}
+<div class="header">
+    <div>
+        <h1>📊 Histórico de Señales MACD PRO</h1>
+    </div>
+    <div>
+        <a href="/" class="btn btn-home">← Volver a Tickers</a>
+    </div>
+</div>
+{% endblock %}
 
-        a {
-            color: inherit;
-            text-decoration: none;
-        }
-
-        .app-shell {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: var(--space-xl) var(--space-lg) var(--space-xl);
-        }
-
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: var(--space-md);
-            margin-bottom: var(--space-xl);
-            flex-wrap: wrap;
-        }
-
-        .header h1 {
-            margin: 0;
-            font-family: var(--font-heading);
-            font-size: clamp(1.8rem, 2.2vw, 2.2rem);
-            letter-spacing: -0.04em;
-        }
-
-        .btn-home {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.9em 1.4em;
-            border-radius: 999px;
-            border: 1px solid rgba(255,255,255,0.12);
-            background: rgba(255,255,255,0.06);
-            color: var(--text);
-            font-weight: 600;
-            transition: transform 0.2s ease, background-color 0.2s ease;
-        }
-
-        .btn-home:hover {
-            background: rgba(255,255,255,0.12);
-            transform: translateY(-1px);
-        }
-
-        .stats-panel,
-        .no-signals,
-        .table-card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-        }
-
-        .stats-panel {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: var(--space-md);
-            padding: var(--space-lg);
-            margin-bottom: var(--space-lg);
-        }
-
-        .stat-item {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-xs);
-        }
-
-        .stat-item span:first-child {
-            color: var(--muted);
-            font-size: 0.95rem;
-        }
-
-        .stat-item span:last-child {
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--text);
-        }
-
-        .table-card {
-            padding: 0;
-            overflow: hidden;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 640px;
-        }
-
-        thead {
-            background: var(--surface-2);
-        }
-
-        th, td {
-            padding: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            text-align: left;
-            vertical-align: middle;
-        }
-
-        th {
-            color: var(--muted);
-            font-size: 0.85rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            font-weight: 700;
-        }
-
-        tbody tr {
-            transition: background 0.2s ease;
-        }
-
-        tbody tr:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        td {
-            color: var(--text);
-            font-size: 0.95rem;
-        }
-
-        .signal-buy,
-        .signal-sell {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.35rem;
-            padding: 0.5em 0.75em;
-            border-radius: 999px;
-            font-size: 0.9rem;
-            font-weight: 700;
-        }
-
-        .signal-buy {
-            background: rgba(34, 197, 94, 0.14);
-            color: var(--primary);
-        }
-
-        .signal-sell {
-            background: rgba(239, 68, 68, 0.14);
-            color: var(--danger);
-        }
-
-        .momento-alcista {
-            color: var(--primary);
-            font-weight: 700;
-        }
-
-        .momento-bajista {
-            color: var(--danger);
-            font-weight: 700;
-        }
-
-        .tendencia-bull {
-            color: #7dd3fc;
-            font-weight: 700;
-        }
-
-        .tendencia-bear {
-            color: #fb923c;
-            font-weight: 700;
-        }
-
-        .no-signals {
-            padding: var(--space-lg);
-            text-align: center;
-            color: var(--muted);
-            border-radius: var(--radius);
-        }
-
-        .no-signals p {
-            margin: 0;
-            line-height: 1.8;
-        }
-
-        @media (max-width: 860px) {
-            .stats-panel {
-                grid-template-columns: 1fr;
-            }
-
-            .table-card {
-                min-width: 0;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .app-shell {
-                padding: var(--space-lg);
-            }
-
-            .header {
-                gap: var(--space-sm);
-            }
-
-            .btn-home {
-                width: 100%;
-                justify-content: center;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="app-shell">
-        <div class="header">
-            <div>
-                <h1>📊 Histórico de Señales MACD PRO</h1>
-            </div>
-            <div>
-                <a href="/" class="btn-home">← Volver a Tickers</a>
-            </div>
-        </div>
-
-        {% if signals %}
-        <div class="stats-panel">
-            <div class="stat-item">
-                <span>Total de señales</span>
-                <span>{{ signals|length }}</span>
-            </div>
-            <div class="stat-item">
-                <span>Últimas 24h</span>
-                <span>-</span>
-            </div>
-        </div>
-
-        <div class="table-card">
+{% block content %}
+{% if signals %}
+    <div class="table-card card">
+        <div class="table-wrapper">
             <table>
                 <thead>
                     <tr>
-                        <th>Timestamp</th>
+                        <th>Fecha UTC</th>
                         <th>Símbolo</th>
-                        <th>Tipo de Señal</th>
+                        <th>Tipo</th>
                         <th>Precio</th>
                         <th>Momento</th>
                         <th>Tendencia</th>
@@ -277,42 +30,24 @@
                 </thead>
                 <tbody>
                     {% for signal in signals %}
-                    <tr>
-                        <td>{{ signal.timestamp }}</td>
-                        <td><strong>{{ signal.symbol }}</strong></td>
-                        <td>
-                            {% if signal.signal_type == 'BUY' %}
-                                <span class="signal-buy">🟢 BUY</span>
-                            {% else %}
-                                <span class="signal-sell">🔴 SELL</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ "%.8f"|format(signal.price|float) }}</td>
-                        <td>
-                            {% if '↑' in signal.momento %}
-                                <span class="momento-alcista">{{ signal.momento }}</span>
-                            {% else %}
-                                <span class="momento-bajista">{{ signal.momento }}</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if 'BULL' in signal.tendencia %}
-                                <span class="tendencia-bull">{{ signal.tendencia }}</span>
-                            {% else %}
-                                <span class="tendencia-bear">{{ signal.tendencia }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
+                        <tr>
+                            <td>{{ signal.timestamp }}</td>
+                            <td>{{ signal.symbol }}</td>
+                            <td>
+                                <span class="signal-{{ signal.signal_type|lower }}">{{ signal.signal_type }}</span>
+                            </td>
+                            <td>{{ signal.price }}</td>
+                            <td class="{{ 'momento-alcista' if 'ALCISTA' in signal.momento else 'momento-bajista' }}">{{ signal.momento }}</td>
+                            <td class="{{ 'tendencia-bull' if 'BULL' in signal.tendencia else 'tendencia-bear' }}">{{ signal.tendencia }}</td>
+                        </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% else %}
-        <div class="no-signals">
-            <p>No hay señales registradas aún.</p>
-            <p>Las señales aparecerán aquí cuando se detecten nuevas operaciones.</p>
-        </div>
-        {% endif %}
     </div>
-</body>
-</html>
+{% else %}
+    <div class="no-signals">
+        <p>No hay señales registradas todavía.</p>
+    </div>
+{% endif %}
+{% endblock %}

@@ -1,18 +1,37 @@
-<!DOCTYPE html>
-<html>
-<head><title>Editar ticker</title></head>
-<body>
-    <h1>Editar ticker</h1>
+{% extends 'base.html' %}
+
+{% block title %}Editar ticker - MACD PRO{% endblock %}
+
+{% block header %}
+<header class="page-header">
+    <div>
+        <h1>Editar ticker</h1>
+        <p class="hint">Actualiza el símbolo, el estado activo y el timeframe con el mismo estilo del panel principal.</p>
+    </div>
+    <a href="/" class="btn btn-secondary">← Volver a Tickers</a>
+</header>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+    <h2>Detalles del ticker</h2>
     <form method="post">
-        <div><label>Símbolo:</label><input name="symbol" value="{{ ticker.symbol }}" required></div>
-        <div><label>Activo:</label>
-            <select name="active">
+        <div class="field">
+            <label for="symbol">Símbolo</label>
+            <input id="symbol" name="symbol" value="{{ ticker.symbol }}" required>
+        </div>
+
+        <div class="field">
+            <label for="active">Activo</label>
+            <select id="active" name="active">
                 <option value="True" {% if ticker.active == 'True' %}selected{% endif %}>Sí</option>
                 <option value="False" {% if ticker.active == 'False' %}selected{% endif %}>No</option>
             </select>
         </div>
-        <div><label>Timeframe:</label>
-            <select name="timeframe">
+
+        <div class="field">
+            <label for="timeframe">Timeframe</label>
+            <select id="timeframe" name="timeframe">
                 <option value="1m" {% if ticker.timeframe == '1m' %}selected{% endif %}>1m</option>
                 <option value="5m" {% if ticker.timeframe == '5m' %}selected{% endif %}>5m</option>
                 <option value="15m" {% if ticker.timeframe == '15m' %}selected{% endif %}>15m</option>
@@ -24,8 +43,11 @@
                 <option value="1w" {% if ticker.timeframe == '1w' %}selected{% endif %}>1w</option>
             </select>
         </div>
-        <button type="submit">Guardar cambios</button>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            <a href="/" class="btn btn-secondary">Cancelar</a>
+        </div>
     </form>
-    <a href="/">Volver</a>
-</body>
-</html>
+</section>
+{% endblock %}
