@@ -7,58 +7,39 @@ from flask import Flask, render_template, request, redirect, url_for
 from apscheduler.schedulers.background import BackgroundScheduler
 from dotenv import load_dotenv
 
-from data_fetcher import fetch_ohlcv
-from macd_logic import detect_signals, get_last_signal
+from data_fetcher import fetch_ohlcv, _is_crypto_symbol
+from macd_logic import detect_signals
 from telegram_bot import send_telegram_alert
 
 load_dotenv()
 
-import time
-from datetime import datetime, timezone
-from data_fetcher import fetch_ohlcv, get_exchange_time
+from datetime import datetime, timezone, timedelta
 
-# ... resto de imports ...
-
-# En lugar de datetime.now(), usaremos datetime.utcnow() en los logs
+# --------------------- Funciones auxiliares ---------------------
 def log_message(msg):
     print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC] {msg}")
 
 def is_wall_street_open():
     """Verifica si está en horario de Wall Street: Pre-market (8:30 AM) - Post-market (5:00 PM EST)."""
-    from datetime import timedelta
-    # EST/EDT es UTC-5 (EST) o UTC-4 (EDT en verano)
-    # Usar pytz para manejo correcto de horarios
     try:
         import pytz
         eastern = pytz.timezone('US/Eastern')
         now = datetime.now(eastern)
     except ImportError:
-        # Fallback sin pytz: asumir EST (UTC-5)
         utc_now = datetime.now(timezone.utc)
-        est_offset = timedelta(hours=-5)  # Ajustar según EDT si es necesario
+        est_offset = timedelta(hours=-5)
         now = utc_now + est_offset
-        now = now.replace(tzinfo=timezone.utc)  # Solo para el cálculo
+        now = now.replace(tzinfo=timezone.utc)
     
-    weekday = now.weekday()  # 0=lunes, 4=viernes, 5=sábado, 6=domingo
-    
-    # No operar en fin de semana
+    weekday = now.weekday()
     if weekday >= 5:
         return False
     
-    # Pre-market: 8:30 AM EST
-    # Post-market: 5:00 PM EST (17:00)
     pre_market = now.replace(hour=8, minute=30, second=0, microsecond=0)
     post_market = now.replace(hour=17, minute=0, second=0, microsecond=0)
-    
-    # Retorna True si está dentro del horario extendido
     return pre_market <= now <= post_market
 
-# Función auxiliar para obtener tiempo UTC actual en ms (respaldo)
-def get_current_utc_ms():
-    return int(pd.Timestamp.utcnow().timestamp() * 1000)
-
 def timeframe_to_milliseconds(timeframe: str) -> int:
-    """Convierte timeframe de Binance (ej: '1h', '15m', '4h') a milisegundos."""
     unit = timeframe[-1]
     value = int(timeframe[:-1])
     if unit == 'm':
@@ -71,24 +52,20 @@ def timeframe_to_milliseconds(timeframe: str) -> int:
         raise ValueError(f"Timeframe no soportado: {timeframe}")
 
 def get_last_closed_candle(df: pd.DataFrame, timeframe_ms: int, current_time_ms: int):
-    """
-    Retorna el índice (entero) de la última fila del DataFrame cuya vela está cerrada.
-    Una vela está cerrada si: timestamp + timeframe_ms <= current_time_ms.
-    Si no hay ninguna, retorna None.
-    """
     for idx in range(len(df)-1, -1, -1):
         candle_time_ms = int(df.index[idx].timestamp() * 1000)
         close_time_ms = candle_time_ms + timeframe_ms
         if close_time_ms <= current_time_ms:
-            return idx  # índice posicional en el DataFrame
+            return idx
     return None
 
-# Parámetros globales (desde .env)
+# --------------------- Parámetros desde .env ---------------------
 PARAMS = {
     'fast_len': int(os.getenv('FAST_LEN', 12)),
     'slow_len': int(os.getenv('SLOW_LEN', 26)),
     'signal_len': int(os.getenv('SIGNAL_LEN', 9)),
     'source_type': os.getenv('SOURCE_TYPE', 'close'),
+    'trend_source_type': os.getenv('TREND_SOURCE_TYPE', 'close'),
     'osc_ma_type': os.getenv('OSC_MA_TYPE', 'EMA'),
     'signal_ma_type': os.getenv('SIGNAL_MA_TYPE', 'EMA'),
     'use_trend_filter': os.getenv('USE_TREND_FILTER', 'true').lower() == 'true',
@@ -102,36 +79,10 @@ CHECK_INTERVAL = int(os.getenv('CHECK_INTERVAL_MINUTES', 5))
 CSV_FILE = 'tickers.csv'
 SIGNALS_FILE = 'signals_history.csv'
 
-# Para evitar múltiples alertas de una misma señal
-last_alert = {}
+last_alerted_candle = {}
 
-# --------------------- Funciones del CSV ---------------------
-def init_signals_file():
-    """Inicializa el archivo de histórico de señales si no existe."""
-    if not os.path.exists(SIGNALS_FILE):
-        with open(SIGNALS_FILE, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['timestamp', 'symbol', 'signal_type', 'price', 'momento', 'tendencia'])
-
-def save_signal(symbol, signal_type, price, momento, tendencia):
-    """Guarda una señal en el histórico CSV."""
-    timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-    with open(SIGNALS_FILE, 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([timestamp, symbol, signal_type, price, momento, tendencia])
-
-def read_signals(limit=100):
-    """Lee las últimas señales del histórico."""
-    init_signals_file()
-    signals = []
-    with open(SIGNALS_FILE, 'r') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            signals.append(row)
-    # Retorna en orden inverso (más recientes primero) y limita
-    return list(reversed(signals))[:limit]
+# --------------------- Funciones del CSV (tickers) ---------------------
 def read_tickers():
-    """Lee el CSV y devuelve lista de dicts con symbol, active, timeframe"""
     tickers = []
     if not os.path.exists(CSV_FILE):
         with open(CSV_FILE, 'w', newline='') as f:
@@ -151,7 +102,6 @@ def write_tickers(tickers):
 
 def add_ticker(symbol, active, timeframe):
     tickers = read_tickers()
-    # evitar duplicados
     if not any(t['symbol'] == symbol for t in tickers):
         tickers.append({'symbol': symbol, 'active': active, 'timeframe': timeframe})
         write_tickers(tickers)
@@ -171,22 +121,73 @@ def delete_ticker(symbol):
     tickers = [t for t in tickers if t['symbol'] != symbol]
     write_tickers(tickers)
 
-# --------------------- Lógica de monitoreo ---------------------
-# Diccionario para recordar la última vela cerrada que ya generó alerta (por símbolo)
-last_alerted_candle = {}  # key: symbol, value: timestamp (ms) de la vela cerrada
+# --------------------- Funciones del histórico de señales ---------------------
+def init_signals_file():
+    if not os.path.exists(SIGNALS_FILE):
+        with open(SIGNALS_FILE, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['timestamp', 'symbol', 'signal_type', 'price', 'momento', 'tendencia'])
 
+def save_signal(symbol, signal_type, price, momento, tendencia):
+    timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    with open(SIGNALS_FILE, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([timestamp, symbol, signal_type, price, momento, tendencia])
+
+def read_signals(limit=100, include_id=True):
+    """Devuelve las últimas 'limit' señales. Si include_id=True, añade clave 'id'."""
+    init_signals_file()
+    signals = []
+    with open(SIGNALS_FILE, 'r') as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader):
+            if include_id:
+                row['id'] = idx
+            signals.append(row)
+    reversed_signals = list(reversed(signals))
+    if limit:
+        reversed_signals = reversed_signals[:limit]
+    return reversed_signals
+
+def get_all_signals_with_id():
+    """Devuelve todas las señales con su ID (sin límite)."""
+    init_signals_file()
+    signals = []
+    with open(SIGNALS_FILE, 'r') as f:
+        reader = csv.DictReader(f)
+        for idx, row in enumerate(reader):
+            row['id'] = idx
+            signals.append(row)
+    return signals
+
+def delete_signal(signal_id):
+    """Borra una señal por su ID (número de fila en el CSV original)."""
+    signals = get_all_signals_with_id()
+    new_signals = [s for s in signals if s['id'] != signal_id]
+    with open(SIGNALS_FILE, 'w', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['timestamp', 'symbol', 'signal_type', 'price', 'momento', 'tendencia'])
+        writer.writeheader()
+        for s in new_signals:
+            s_copy = {k: v for k, v in s.items() if k != 'id'}
+            writer.writerow(s_copy)
+    return True
+
+def delete_all_signals():
+    """Elimina todo el histórico, dejando solo la cabecera."""
+    with open(SIGNALS_FILE, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(['timestamp', 'symbol', 'signal_type', 'price', 'momento', 'tendencia'])
+    return True
+
+# --------------------- Lógica de monitoreo ---------------------
 def analyze_and_alert():
     global last_alerted_candle
-    
-    # Verificar si está en horario de Wall Street (incluye pre-market y post-market)
-    if not is_wall_street_open():
-        log_message("Fuera del horario de Wall Street (pre-market 8:30 AM - post-market 5:00 PM EST). Análisis omitido.")
-        return
     
     tickers = read_tickers()
     active_tickers = [t for t in tickers if t['active'].lower() == 'true']
     
     try:
+        from data_fetcher import get_exchange_time
         current_time_ms = get_exchange_time()
     except Exception:
         current_time_ms = int(pd.Timestamp.utcnow().timestamp() * 1000)
@@ -195,6 +196,12 @@ def analyze_and_alert():
         symbol = ticker['symbol']
         timeframe = ticker.get('timeframe', DEFAULT_TIMEFRAME)
         timeframe_ms = timeframe_to_milliseconds(timeframe)
+        
+        # Aplicar horario de Wall Street solo a acciones (no criptos)
+        if not _is_crypto_symbol(symbol):
+            if not is_wall_street_open():
+                log_message(f"Fuera de horario Wall Street, saltando acción {symbol}")
+                continue
         
         try:
             df = fetch_ohlcv(symbol, timeframe, limit=300)
@@ -213,10 +220,8 @@ def analyze_and_alert():
             df_subset = detect_signals(df_subset, PARAMS)
             
             last_row = df_subset.iloc[-1]
-            prev_row = df_subset.iloc[-2] if len(df_subset) > 1 else None
-            
-            buy_signal = last_row['buy_signal'] and (prev_row is None or not prev_row['buy_signal'])
-            sell_signal = last_row['sell_signal'] and (prev_row is None or not prev_row['sell_signal'])
+            buy_signal = last_row['buy_signal']
+            sell_signal = last_row['sell_signal']
             
             if buy_signal or sell_signal:
                 sig_type = 'BUY' if buy_signal else 'SELL'
@@ -227,7 +232,7 @@ def analyze_and_alert():
                 sent = send_telegram_alert(symbol, sig_type, precio, momento, tendencia)
                 save_signal(symbol, sig_type, precio, momento, tendencia)
                 if not sent:
-                    log_message(f"ERROR: fallo al enviar Telegram para {symbol} - Precio: {precio} (vela UTC {last_closed_ts})")
+                    log_message(f"ERROR: fallo al enviar Telegram para {symbol} - Precio: {precio}")
                 log_message(f"Alerta {sig_type} para {symbol} - Precio: {precio} (vela UTC {last_closed_ts})")
                 last_alerted_candle[symbol] = last_closed_ts
             else:
@@ -246,12 +251,13 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     tickers = read_tickers()
-    return render_template('index.html', tickers=tickers)
+    active_count = sum(1 for t in tickers if t['active'].lower() == 'true')
+    return render_template('index.html', tickers=tickers, active_count=active_count)
 
 @app.route('/signals')
 def signals():
-    signals = read_signals(limit=200)
-    return render_template('signals.html', signals=signals)
+    signals_list = read_signals(limit=200)
+    return render_template('signals.html', signals=signals_list)
 
 @app.route('/add', methods=['POST'])
 def add():
@@ -278,15 +284,22 @@ def delete(symbol):
     delete_ticker(symbol)
     return redirect(url_for('index'))
 
+@app.route('/delete_signal/<int:signal_id>')
+def delete_signal_route(signal_id):
+    delete_signal(signal_id)
+    return redirect(url_for('signals'))
+
+@app.route('/delete_all_signals')
+def delete_all_signals_route():
+    delete_all_signals()
+    return redirect(url_for('signals'))
+
 # --------------------- Arranque ---------------------
 def start_scheduler():
     scheduler = BackgroundScheduler()
     scheduler.add_job(func=analyze_and_alert, trigger='interval', minutes=CHECK_INTERVAL)
     scheduler.start()
     print(f"Scheduler iniciado. Revisando cada {CHECK_INTERVAL} minuto(s).")
-    # log_message(f"Hora UTC actual del sistema: {pd.Timestamp.utcnow()}")
-    # log_message(f"Hora del exchange: {datetime.utcfromtimestamp(get_exchange_time()/1000)} UTC")
-    # Ejecutar inmediatamente al inicio
     threading.Timer(5, analyze_and_alert).start()
 
 if __name__ == '__main__':

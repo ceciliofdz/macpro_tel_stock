@@ -36,10 +36,12 @@ def detect_signals(df: pd.DataFrame, params: dict) -> pd.DataFrame:
     df['raw_buy'] = (hist > 0) & (hist.shift(1) <= 0)
     df['raw_sell'] = (hist < 0) & (hist.shift(1) >= 0)
     
-    # Filtro de tendencia (EMA200)
-    ema200 = ma(df['close'], params['trend_len'], 'EMA')
-    df['is_bullish'] = df['close'] > ema200
-    df['is_bearish'] = df['close'] < ema200
+    # --- CORRECCIÓN: filtro de tendencia usando la misma 'source' (o 'close' si se desea) ---
+    # Nuevo parámetro opcional: 'trend_source_type' (por defecto 'close' para no romper compatibilidad)
+    trend_source = df[params.get('trend_source_type', 'close')]
+    ema200 = ma(trend_source, params['trend_len'], 'EMA')
+    df['is_bullish'] = trend_source > ema200
+    df['is_bearish'] = trend_source < ema200
     
     # Aplicar filtro según modo
     use_trend = params['use_trend_filter']

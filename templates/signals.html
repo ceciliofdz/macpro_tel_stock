@@ -7,8 +7,9 @@
     <div>
         <h1>📊 Histórico de Señales MACD PRO</h1>
     </div>
-    <div>
+    <div style="display: flex; gap: 12px;">
         <a href="/" class="btn btn-home">← Volver a Tickers</a>
+        <a href="/delete_all_signals" class="btn btn-secondary" onclick="return confirm('⚠️ ¿Eliminar TODAS las señales? Esta acción no se puede deshacer.')">🗑️ Borrar todas</a>
     </div>
 </div>
 {% endblock %}
@@ -26,20 +27,22 @@
                         <th>Precio</th>
                         <th>Momento</th>
                         <th>Tendencia</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for signal in signals %}
-                        <tr>
-                            <td>{{ signal.timestamp }}</td>
-                            <td>{{ signal.symbol }}</td>
-                            <td>
-                                <span class="signal-{{ signal.signal_type|lower }}">{{ signal.signal_type }}</span>
-                            </td>
-                            <td>{{ signal.price }}</td>
-                            <td class="{{ 'momento-alcista' if 'ALCISTA' in signal.momento else 'momento-bajista' }}">{{ signal.momento }}</td>
-                            <td class="{{ 'tendencia-bull' if 'BULL' in signal.tendencia else 'tendencia-bear' }}">{{ signal.tendencia }}</td>
-                        </tr>
+                    <tr>
+                        <td>{{ signal.timestamp }}</td>
+                        <td>{{ signal.symbol }}</td>
+                        <td><span class="signal-{{ signal.signal_type|lower }}">{{ signal.signal_type }}</span></td>
+                        <td>{{ signal.price }}</td>
+                        <td class="{{ 'momento-alcista' if 'ALCISTA' in signal.momento else 'momento-bajista' }}">{{ signal.momento }}</td>
+                        <td class="{{ 'tendencia-bull' if 'BULL' in signal.tendencia else 'tendencia-bear' }}">{{ signal.tendencia }}</td>
+                        <td>
+                            <a href="/delete_signal/{{ signal.id }}" class="btn btn-secondary" style="padding: 0.4em 0.8em;" onclick="return confirm('¿Borrar esta señal?')">❌ Borrar</a>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
