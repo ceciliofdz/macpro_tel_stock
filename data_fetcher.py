@@ -128,7 +128,12 @@ def fetch_ohlcv(symbol: str, timeframe: str, limit: int = 300) -> pd.DataFrame:
     interval = _timeframe_to_yf_interval(timeframe)
     # Pedimos un periodo suficientemente largo para cubrir `limit` velas
     # Para intradiario pedimos 120d, para diario pedimos 365d
-    period = '365d' if interval == '1d' else '120d'
+    # period = '365d' if interval == '1d' else '120d'
+    # Ajustar periodo según intervalo
+    if interval in ['1m', '2m', '5m', '15m', '30m']:
+        period = '7d'   # Yahoo solo da pocos días para intradiario muy granular
+    else:
+        period = '120d' if interval != '1d' else '365d'
 
     tk = yf.Ticker(symbol)
     hist = None
