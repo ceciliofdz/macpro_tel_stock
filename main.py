@@ -23,6 +23,36 @@ from data_fetcher import fetch_ohlcv, get_exchange_time
 def log_message(msg):
     print(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC] {msg}")
 
+def is_wall_street_open():
+    """Verifica si está en horario de Wall Street: Pre-market (8:30 AM) - Post-market (5:00 PM EST)."""
+    from datetime import timedelta
+    # EST/EDT es UTC-5 (EST) o UTC-4 (EDT en verano)
+    # Usar pytz para manejo correcto de horarios
+    try:
+        import pytz
+        eastern = pytz.timezone('US/Eastern')
+        now = datetime.now(eastern)
+    except ImportError:
+        # Fallback sin pytz: asumir EST (UTC-5)
+        utc_now = datetime.now(timezone.utc)
+        est_offset = timedelta(hours=-5)  # Ajustar según EDT si es necesario
+        now = utc_now + est_offset
+        now = now.replace(tzinfo=timezone.utc)  # Solo para el cálculo
+    
+    weekday = now.weekday()  # 0=lunes, 4=viernes, 5=sábado, 6=domingo
+    
+    # No operar en fin de semana
+    if weekday >= 5:
+        return False
+    
+    # Pre-market: 8:30 AM EST
+    # Post-market: 5:00 PM EST (17:00)
+    pre_market = now.replace(hour=8, minute=30, second=0, microsecond=0)
+    post_market = now.replace(hour=17, minute=0, second=0, microsecond=0)
+    
+    # Retorna True si está dentro del horario extendido
+    return pre_market <= now <= post_market
+
 # Función auxiliar para obtener tiempo UTC actual en ms (respaldo)
 def get_current_utc_ms():
     return int(pd.Timestamp.utcnow().timestamp() * 1000)
@@ -147,6 +177,12 @@ last_alerted_candle = {}  # key: symbol, value: timestamp (ms) de la vela cerrad
 
 def analyze_and_alert():
     global last_alerted_candle
+    
+    # Verificar si está en horario de Wall Street (incluye pre-market y post-market)
+    if not is_wall_street_open():
+        log_message("Fuera del horario de Wall Street (pre-market 8:30 AM - post-market 5:00 PM EST). Análisis omitido.")
+        return
+    
     tickers = read_tickers()
     active_tickers = [t for t in tickers if t['active'].lower() == 'true']
     
